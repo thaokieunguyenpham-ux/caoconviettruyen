@@ -22,12 +22,14 @@ input,select,textarea{width:100%;background:var(--paper);border:1px solid var(--
 textarea{resize:vertical;min-height:84px}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 small,.mute,.hint{color:var(--mute)}
-#side{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:6px;box-shadow:var(--sh);min-height:0;overflow:auto}
+#side{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:0;box-shadow:var(--sh);min-height:0;overflow:hidden}
 #ptitle{font-weight:500;margin:6px 0 10px}
 #nav{display:flex;flex-direction:column;gap:4px}
 #nav button{border:0;background:transparent;text-align:left;padding:10px 14px;border-radius:14px}
 #nav button.on{background:var(--acc);color:#fff}
-.sp{flex:1}
+.sh,.sm,.sf{display:flex;flex-direction:column;gap:6px}
+.sh,.sf{flex:none}.sh{padding-bottom:10px}.sf{padding-top:10px}
+.sm{flex:1;min-height:0;overflow:auto;padding:10px 3px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 #saved{font-size:12px;color:var(--mute);text-align:center}
 #main{min-width:0;min-height:0}
 .view{height:100%;overflow:auto}
@@ -136,30 +138,32 @@ body.m-read #app-read{display:flex;flex-direction:column;height:100%}
 #e_part:hover,#e_title:hover,#e_part:focus,#e_title:focus{background:color-mix(in srgb,var(--acc) 9%,transparent)}
 #v-write{align-items:start;overflow:auto}
 #v-write .box{overflow:visible}
-#v-write #left,#v-write #right{position:sticky;top:0;max-height:calc(100vh - 24px);overflow:auto}
+#v-write #left{position:sticky;top:0;max-height:calc(100vh - 24px);overflow:auto}
+#v-write #right{position:sticky;top:0;height:calc(100vh - 24px);display:flex;flex-direction:column;overflow:auto}
+.cbar{position:sticky;bottom:0;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 28px;margin:auto -28px -10px;background:var(--paper);border-top:1px solid var(--line);border-radius:0 0 20px 20px}
 #center{min-height:calc(100vh - 24px)}
-#text{flex:none;overflow:hidden;min-height:55vh}
-#out{flex:none;overflow:auto;resize:vertical;min-height:240px;max-height:none}
+#text{flex:1 0 auto;overflow:hidden;min-height:200px}
+#out{flex:1 1 auto;overflow:auto;min-height:120px}
 #instr{resize:vertical;min-height:56px}
 #rsz{position:absolute;left:0;top:0;bottom:0;width:9px;cursor:col-resize;border-radius:999px}#rsz:hover{background:color-mix(in srgb,var(--acc) 35%,transparent)}
-@media(max-width:900px){#v-write #left,#v-write #right{position:static;max-height:none}#rsz{display:none}}
+@media(max-width:900px){#v-write #left,#v-write #right{position:static;max-height:none;height:auto}#out{min-height:240px}#rsz{display:none}}
 .sc{width:170px}.sc .row{margin-top:6px}.newb .cover{background:var(--panel);color:var(--accT);border:2px dashed var(--line);font-size:42px}
 .uc{display:flex;gap:8px;align-items:center;text-align:left;border-radius:16px;padding:8px 10px;width:100%}.uc .av{width:34px;height:34px;flex:none}.uc div{min-width:0}.uc b,.uc small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:900px){.rc{grid-template-columns:1fr}}
-@media(max-width:900px){body{display:block;height:auto}#nav{flex-direction:row;flex-wrap:wrap}#v-write{display:block}#center{min-height:75vh;margin:10px 0}.two{grid-template-columns:1fr}}
+@media(max-width:900px){body{display:block;height:auto}#nav{flex-direction:row;flex-wrap:wrap}#side{overflow:visible}.sm{flex:none;overflow:visible}#v-write{display:block}#center{min-height:75vh;margin:10px 0}.two{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="fox" viewBox="0 0 64 64"><path style="fill:var(--acc)" d="M9 31C6 16 10 7 14 5c8 2 14 8 16 15zM55 31c3-15-1-24-5-26-8 2-14 8-16 15z"/><path style="fill:var(--acc)" d="M8 28C14 20 24 18 32 18s18 2 24 10c-2 14-14 26-24 31C22 54 10 42 8 28z"/><path fill="#fffaf3" d="M8 28c8 8 16 10 24 16 8-6 16-8 24-16-2 14-14 26-24 31C22 54 10 42 8 28z"/><path fill="#fffaf3" opacity=".7" d="M15 25c-1-7 0-11 2-14 4 2 7 6 8 11zM49 25c1-7 0-11-2-14-4 2-7 6-8 11z"/><ellipse cx="23" cy="33" rx="2.3" ry="3" fill="#2a1d18"/><ellipse cx="41" cy="33" rx="2.3" ry="3" fill="#2a1d18"/><ellipse cx="32" cy="54.5" rx="3.2" ry="2.4" fill="#2a1d18"/></symbol></svg>
 <aside id="side">
-  <div class="brand"><div class="fx" role="img" aria-label="Logo cáo nhỏ"></div><div><b>Xưởng Truyện</b><small>cáo nhỏ cầm bút</small></div></div>
-  <div class="seg" style="margin:8px 0 2px"><button data-m="read">Đọc truyện</button><button data-m="write" class="on">Xưởng viết</button></div><select id="stsel" aria-label="Chọn truyện" style="margin-top:6px"></select><input id="ptitle" data-p="title" aria-label="Tên truyện" placeholder="Tên truyện">
-  <nav id="nav"><button data-v="lib">Tủ truyện</button><button data-v="start">Bắt đầu</button><button data-v="write" class="on">Viết</button><button data-v="cards">Hồ sơ truyện</button><button data-v="pub">Xuất bản</button><button data-v="me">Tác giả</button></nav>
-  <div class="sp"></div>
-  <button id="uchip" class="uc" aria-label="Hồ sơ tác giả"></button>
+  <div class="sh"><div class="brand"><div class="fx" role="img" aria-label="Logo cáo nhỏ"></div><div><b>Xưởng Truyện</b><small>cáo nhỏ cầm bút</small></div></div>
+  <div class="seg" style="margin:8px 0 0"><button data-m="read">Đọc truyện</button><button data-m="write" class="on">Xưởng viết</button></div></div>
+  <div class="sm"><select id="stsel" aria-label="Chọn truyện"></select><input id="ptitle" data-p="title" aria-label="Tên truyện" placeholder="Tên truyện">
+  <nav id="nav"><button data-v="lib">Tủ truyện</button><button data-v="start">Bắt đầu</button><button data-v="write" class="on">Viết</button><button data-v="cards">Hồ sơ truyện</button><button data-v="pub">Xuất bản</button><button data-v="me">Tác giả</button></nav></div>
+  <div class="sf"><button id="uchip" class="uc" aria-label="Hồ sơ tác giả"></button>
   <button id="bk">Sao lưu</button><button id="rs">Khôi phục</button><input type="file" id="rsf" accept=".json" hidden>
   <button id="cfgb" class="pri">Cài đặt</button>
-  <div id="saved"></div>
+  <div id="saved"></div></div>
 </aside>
 <main id="main">
 <div class="view" id="v-write">
@@ -168,7 +172,7 @@ body.m-read #app-read{display:flex;flex-direction:column;height:100%}
     <input id="e_part" aria-label="Tên phần" placeholder="Tên phần" title="Bấm vào đây để sửa tên phần"><input id="e_title" aria-label="Tên chương" placeholder="Tên chương" title="Bấm vào đây để sửa tên chương">
     <input id="e_sum" aria-label="Tóm tắt chương" placeholder="Tóm tắt chương này (AI dùng để viết đúng hướng)">
     <textarea id="text" placeholder="Bắt đầu viết ở đây. Bôi đen một đoạn rồi nhờ AI viết lại hoặc mở rộng."></textarea>
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding-top:6px"><button id="rdb">Đọc thử chương này</button><span id="count"></span></div>
+    <div class="cbar"><button id="rdb">Đọc thử chương này</button><span id="count"></span></div>
   </section>
   <aside class="box" id="right"><div id="rsz" title="Kéo để đổi độ rộng khung AI"></div>
     <div><span id="dot" class="dot"></span><span id="st">Chưa kết nối AI</span></div>
@@ -260,7 +264,7 @@ $('#tree').onclick=async e=>{const b=e.target.closest('button');if(!b)return;con
  if(t=='dp'&&await ask('Xóa phần "'+p.title+'" cùng mọi chương trong đó?')){S.parts.splice(i,1);fix();loadEd()}
  tree();save()};
 $('#addp').onclick=()=>{S.parts.push({title:'Phần '+(S.parts.length+1),sum:'',open:true,chapters:[{title:'Chương '+(allCh()+1),sum:'',text:''}]});S.cur=[S.parts.length-1,0];loadEd();save()};
-function grow(){const t=$('#text');if(!t||!t.offsetParent)return;const v=$('#v-write'),y=v.scrollTop;t.style.height='auto';t.style.height=t.scrollHeight+'px';v.scrollTop=y}
+function grow(){const t=$('#text');if(!t||!t.offsetParent)return;const v=$('#v-write'),y=v.scrollTop;t.style.flex='none';t.style.height='auto';const h=t.scrollHeight;t.style.height=h+'px';t.style.flex='';v.scrollTop=y}
 window.addEventListener('resize',()=>grow());
 function count(){grow();$('#count').textContent=wc($('#text').value)+' từ trong chương · '+words()+' từ cả truyện'}
 function chip(){const u=S.user,n=S.author.name||(u&&u.name)||'Chưa đặt bút danh',pic=S.author.avatar||(u&&u.pic);
@@ -571,7 +575,7 @@ function build(a,x){const f=ch().text,s=f.slice(sel[0],sel[1]);let b;
 async function run(a){const x=$('#instr').value.trim(),out=$('#out');if(!a&&!x){out.textContent='Hãy chọn một nút hoặc gõ yêu cầu.';return}
  if(!pm()&&!(await models())){out.textContent='Chưa kết nối AI. Bấm Cài đặt để chọn nhà cung cấp và nhập API key.';return}
  out.textContent='';ctl=new AbortController();
- try{await llm(sys(),build(a,x),{on:t=>{out.textContent+=t;$('#right').scrollTop=$('#right').scrollHeight},signal:ctl.signal})}
+ try{await llm(sys(),build(a,x),{on:t=>{out.textContent+=t;out.scrollTop=out.scrollHeight},signal:ctl.signal})}
  catch(e){if(e.name!='AbortError')out.textContent+='\n[Lỗi: '+e.message+']'}
  ctl=null}
 $$('[data-a]').forEach(b=>b.onclick=()=>run(b.dataset.a));
@@ -581,7 +585,7 @@ $('#ins').onclick=()=>{const o=$('#out').textContent,t=$('#text');if(!o)return;t
 $('#rep').onclick=()=>{const o=$('#out').textContent,t=$('#text');if(!o||sel[0]==sel[1]){$('#out').textContent='Hãy bôi đen đoạn cần thay trong bản thảo trước.\n\n'+o;return}t.value=t.value.slice(0,sel[0])+o+t.value.slice(sel[1]);ch().text=t.value;sel=[sel[0],sel[0]+o.length];count();save();tree()};
 $('#cp').onclick=()=>navigator.clipboard.writeText($('#out').textContent);
 document.documentElement.style.setProperty('--logo','url('+LOGO+')');$('link[rel=icon]').href=LOGO;
-theme();$('#ptitle').value=S.title;loadEd();models();bkInit();$('#ver').textContent='Phiên bản: 11-10-2026-c (kéo giãn khung AI, đổi bìa ở Tủ truyện)';
+theme();$('#ptitle').value=S.title;loadEd();models();bkInit();$('#ver').textContent='Phiên bản: 11-10-2026-f (thanh bên: ghim đầu và cuối, phần giữa cuộn)';
 (()=>{const h=$('#rsz'),v=$('#v-write'),set=w=>{w=Math.max(300,Math.min(760,w));v.style.gridTemplateColumns='260px 1fr '+w+'px';try{localStorage.setItem('xt_aiw',w)}catch(e){}};
  try{const w=+localStorage.getItem('xt_aiw');if(w)set(w)}catch(e){}
  h.onpointerdown=e=>{e.preventDefault();h.setPointerCapture(e.pointerId);h.onpointermove=m=>set(v.getBoundingClientRect().right-m.clientX-4)};h.onpointerup=()=>{h.onpointermove=null}})();
