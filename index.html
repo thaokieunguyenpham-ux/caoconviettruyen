@@ -139,8 +139,10 @@ body.m-read #app-read{display:flex;flex-direction:column;height:100%}
 #v-write #left,#v-write #right{position:sticky;top:0;max-height:calc(100vh - 24px);overflow:auto}
 #center{min-height:calc(100vh - 24px)}
 #text{flex:none;overflow:hidden;min-height:55vh}
-#out{flex:none;overflow:visible;max-height:none}
-@media(max-width:900px){#v-write #left,#v-write #right{position:static;max-height:none}}
+#out{flex:none;overflow:auto;resize:vertical;min-height:240px;max-height:none}
+#instr{resize:vertical;min-height:56px}
+#rsz{position:absolute;left:0;top:0;bottom:0;width:9px;cursor:col-resize;border-radius:999px}#rsz:hover{background:color-mix(in srgb,var(--acc) 35%,transparent)}
+@media(max-width:900px){#v-write #left,#v-write #right{position:static;max-height:none}#rsz{display:none}}
 .sc{width:170px}.sc .row{margin-top:6px}.newb .cover{background:var(--panel);color:var(--accT);border:2px dashed var(--line);font-size:42px}
 .uc{display:flex;gap:8px;align-items:center;text-align:left;border-radius:16px;padding:8px 10px;width:100%}.uc .av{width:34px;height:34px;flex:none}.uc div{min-width:0}.uc b,.uc small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:900px){.rc{grid-template-columns:1fr}}
@@ -168,7 +170,7 @@ body.m-read #app-read{display:flex;flex-direction:column;height:100%}
     <textarea id="text" placeholder="Bắt đầu viết ở đây. Bôi đen một đoạn rồi nhờ AI viết lại hoặc mở rộng."></textarea>
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding-top:6px"><button id="rdb">Đọc thử chương này</button><span id="count"></span></div>
   </section>
-  <aside class="box" id="right">
+  <aside class="box" id="right"><div id="rsz" title="Kéo để đổi độ rộng khung AI"></div>
     <div><span id="dot" class="dot"></span><span id="st">Chưa kết nối AI</span></div>
     <div class="grid">
       <button data-a="cont" class="pri">Viết tiếp</button><button data-a="draft">Viết từ tóm tắt</button>
@@ -293,7 +295,7 @@ function stList(){const e=$('#stsel');if(!e)return;e.innerHTML=LIB.stories.map(x
 function openStory(id){const st=LIB.stories.find(x=>x.id==id);if(!st)return;LIB.cur=id;S=mk(st);$('#ptitle').value=S.title;sx='';plan=null;pubSel.clear();fix();loadEd();save()}
 function newStory(){const st=split(def())[0];st.title='';LIB.stories.push(st);openStory(st.id);show('start');toast('Đã tạo truyện mới. Hãy ném cho mình một ý tưởng hoặc dán bản thảo.')}
 $('#stsel').onchange=e=>{if(e.target.value=='__new')newStory();else{openStory(e.target.value);show(V=='lib'?'lib':'write')}};
-R.lib=()=>`<h2>Tủ truyện</h2><p class="hint">Mỗi truyện có hồ sơ, khung sườn, bìa và bản thảo riêng. Hồ sơ tác giả, màu giao diện và cài đặt AI dùng chung cho mọi truyện.</p><div class="shelf">${LIB.stories.map(st=>`<div class="sc"><button class="book" data-t="os" data-s="${st.id}"><div class="cover" style="${st.cover?`background-image:url(${st.cover})`:''}">${st.cover?'':esc(stN(st))}</div><b>${esc(stN(st))}</b><small>${stC(st)} chương · ${stW(st)} từ${st.id==LIB.cur?' · đang mở':''}</small></button><div class="row"><button data-t="os" data-s="${st.id}">Mở</button><button data-t="ds" data-s="${st.id}">Xóa</button></div></div>`).join('')}<div class="sc"><button class="book newb" data-t="ns"><div class="cover">+</div><b>Truyện mới</b></button></div></div>`;
+R.lib=()=>`<h2>Tủ truyện</h2><p class="hint">Bấm <b>Đổi bìa</b> dưới mỗi truyện để tải ảnh bìa (nên dùng ảnh dọc tỉ lệ 2:3, ví dụ 600×900). Mỗi truyện có hồ sơ, khung sườn, bìa và bản thảo riêng. Hồ sơ tác giả, màu giao diện và cài đặt AI dùng chung cho mọi truyện.</p><div class="shelf">${LIB.stories.map(st=>`<div class="sc"><button class="book" data-t="os" data-s="${st.id}"><div class="cover" style="${st.cover?`background-image:url(${st.cover})`:''}">${st.cover?'':esc(stN(st))}</div><b>${esc(stN(st))}</b><small>${stC(st)} chương · ${stW(st)} từ${st.id==LIB.cur?' · đang mở':''}</small></button><div class="row"><button data-t="os" data-s="${st.id}">Mở</button><button data-t="cv" data-s="${st.id}">Đổi bìa</button><button data-t="ds" data-s="${st.id}">Xóa</button></div></div>`).join('')}<div class="sc"><button class="book newb" data-t="ns"><div class="cover">+</div><b>Truyện mới</b></button></div></div>`;
 
 /* ---------- Bắt đầu: từ ý tưởng đến tác phẩm ---------- */
 let smode='explore',sx='',plan=null;
@@ -353,7 +355,7 @@ document.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer&&
 
 /* ---------- Xuất bản ---------- */
 const av=big=>S.author.avatar?`<img class="av${big?' lg':''}" alt="" referrerpolicy="no-referrer" src="${S.author.avatar}">`:`<span class="av${big?' lg':''}">${esc((S.author.name||'?')[0])}</span>`;
-R.pub=()=>`<h2>Xuất bản</h2><p class="hint">Trang giới thiệu truyện và xuất bản nội dung. Tách riêng khỏi phần viết.</p><div class="two"><div>
+R.pub=()=>`<h2>Xuất bản</h2><p class="hint">Đây là nơi sửa thông tin hiển thị của truyện: ảnh bìa, thể loại, tình trạng, giới thiệu. Tủ truyện và Góc đọc truyện chỉ hiển thị lại các thông tin này. Bìa nên là ảnh dọc tỉ lệ 2:3 (ví dụ 600×900).</p><div class="two"><div>
 <div class="card"><h3>Trang truyện</h3>${F('genre','Thể loại (cách nhau bằng dấu phẩy)')}<label class="f"><span>Tình trạng</span><select data-p="status">${['Đang viết','Hoàn thành','Tạm ngưng'].map(o=>`<option${S.status==o?' selected':''}>${o}</option>`).join('')}</select></label>${F('blurb','Giới thiệu truyện',1,'Đoạn mô tả độc giả thấy đầu tiên')}<div class="row" style="margin-top:12px"><button data-t="cov" class="pri">Chọn ảnh bìa</button><button data-t="cov0">Bỏ ảnh bìa</button></div></div>
 <div class="card"><h3>Xuất bản chương</h3>${S.parts.map((p,i)=>`<b>${esc(p.title)}</b>`+p.chapters.map((c,j)=>`<label class="chk"><input type="checkbox" data-s="${i}-${j}"${pubSel.has(i+'-'+j)?' checked':''}><span>${esc(c.title)} <small>${wc(c.text)} từ</small></span></label>`).join('')).join('')}
 <div class="row"><button data-t="sa">Chọn tất cả</button><button data-t="sn">Bỏ chọn</button></div>
@@ -405,13 +407,14 @@ function rdr(){$('#app-read').innerHTML=rv=='read'?readScr():rhead()+'<div class
 function setMode(m){mode=m;try{localStorage.setItem('xt_mode',m)}catch(e){}document.body.classList.toggle('m-read',m=='read');if(m=='read')rdr();else show(V)}
 function rAct(b){const{t}=b.dataset,i=+b.dataset.i;
  if(t=='rd'){S.rp=[i,+b.dataset.j];rv='read';rdr();save()}
+ if(t=='rpub'){rfrom='book';setMode('write');show('pub');return}
  if(t=='rb'){if(rfrom=='write'){rfrom='book';rv='book';setMode('write')}else{rv='book';rdr()}}
  if(t=='rset')$('#rset').hidden=!$('#rset').hidden;
  if(['rz','rf','rl','rbg'].includes(t)){const d=RD(),v=b.dataset.v;if(t=='rz')d.size=Math.min(32,Math.max(14,d.size+ +v));if(t=='rf')d.font=v;if(t=='rl')d.lh=Math.min(2.6,Math.max(1.4,+(d.lh+ +v).toFixed(1)));if(t=='rbg')d.bg=v;rdApply();save()}}
 $('#app-read').addEventListener('click',e=>{const b=e.target.closest('[data-t],[data-r]');if(!b)return;if(b.dataset.r){if(b.dataset.s)openStory(b.dataset.s);rv=b.dataset.r;rdr()}else rAct(b)});
 document.addEventListener('click',e=>{const m=e.target.closest('[data-m]');if(m){rfrom='book';if(m.dataset.m=='read'&&rv=='read')rv='home';setMode(m.dataset.m)}});
 function readCover(){const n=flat().length,tags=(S.genre||'').split(',').map(x=>x.trim()).filter(Boolean),rp=S.rp&&S.parts[S.rp[0]]&&S.parts[S.rp[0]].chapters[S.rp[1]]?S.rp:null;
- return `<div class="page"><div class="card rc"><div class="cover" style="${S.cover?`background-image:url(${S.cover})`:''}">${S.cover?'':esc(S.title||'Tên truyện')}</div><div><h2 style="margin:0">${esc(S.title||'Tên truyện')}</h2><div class="by" style="justify-content:flex-start">${av()}<span>${esc(S.author.name||'Tác giả chưa đặt tên')}</span></div><div class="tags" style="justify-content:flex-start"><span class="chip on">${esc(S.status)}</span>${tags.map(t=>`<span class="chip">${esc(t)}</span>`).join('')}<span class="chip">${n} chương</span><span class="chip">${words()} từ</span></div><p>${esc(S.blurb||'Chưa có phần giới thiệu.')}</p><div class="row"><button class="pri" data-t="rd" data-i="${rp?rp[0]:0}" data-j="${rp?rp[1]:0}">${rp?'Đọc tiếp':'Bắt đầu đọc'}</button>${rp?'<button data-t="rd" data-i="0" data-j="0">Đọc từ đầu</button>':''}</div></div></div>
+ return `<div class="page"><div class="card rc"><div class="cover" style="${S.cover?`background-image:url(${S.cover})`:''}">${S.cover?'':esc(S.title||'Tên truyện')}</div><div><h2 style="margin:0">${esc(S.title||'Tên truyện')}</h2><div class="by" style="justify-content:flex-start">${av()}<span>${esc(S.author.name||'Tác giả chưa đặt tên')}</span></div><div class="tags" style="justify-content:flex-start"><span class="chip on">${esc(S.status)}</span>${tags.map(t=>`<span class="chip">${esc(t)}</span>`).join('')}<span class="chip">${n} chương</span><span class="chip">${words()} từ</span></div><p>${esc(S.blurb||'Chưa có phần giới thiệu.')}</p><div class="row"><button class="pri" data-t="rd" data-i="${rp?rp[0]:0}" data-j="${rp?rp[1]:0}">${rp?'Đọc tiếp':'Bắt đầu đọc'}</button>${rp?'<button data-t="rd" data-i="0" data-j="0">Đọc từ đầu</button>':''}<button data-t="rpub">Sửa trang truyện</button></div></div></div>
 <div class="card"><h3>Mục lục</h3>${S.parts.map((p,i)=>`<h4>${esc(p.title)}</h4>`+(p.chapters.map((c,j)=>`<button class="toc tb" data-t="rd" data-i="${i}" data-j="${j}"><span>${esc(c.title)}</span><small>${wc(c.text)} từ</small></button>`).join('')||'<small>Chưa có chương.</small>')).join('')}</div></div>`}
 function readScr(){const f=flat(),k=Math.max(0,f.findIndex(x=>S.rp&&x.i==S.rp[0]&&x.j==S.rp[1])),cur=f[k],pr=f[k-1],nx=f[k+1],go=(x,c)=>x?`class="${c}" data-t="rd" data-i="${x.i}" data-j="${x.j}"`:`class="${c}" disabled`;
  return `<div class="rd" id="rd"><div class="rbar"><button data-t="rb">← Quay lại</button><span class="rt">${esc(cur.c.title)}</span><button data-t="rset" aria-label="Tùy chỉnh đọc">Aa</button><div class="rpg"><i id="rpi"></i></div></div>
@@ -452,7 +455,8 @@ $('#main').addEventListener('click',async e=>{const b=e.target.closest('[data-t]
  if(t=='bkn')bkNow(1);
  if(t=='bkr')bkRestore();
  if(t=='bku'&&await ask('Bỏ liên kết thư mục sao lưu? Các file đã sao lưu vẫn còn trong thư mục.')){dirH=null;await idb('readwrite','dir');show('me')}
- if(t=='cov')$('#fcov').click();
+ if(t=='cov'){ctgt=null;$('#fcov').click()}
+ if(t=='cv'){ctgt=LIB.stories.find(x=>x.id==b.dataset.s)||null;$('#fcov').click()}
  if(t=='cov0'){S.cover='';pubPrev()}
  if(t=='avp')$('#fav').click();
  if(t=='sa'){S.parts.forEach((p,i)=>p.chapters.forEach((c,j)=>pubSel.add(i+'-'+j)));show('pub')}
@@ -461,7 +465,8 @@ $('#main').addEventListener('click',async e=>{const b=e.target.closest('[data-t]
  if(t=='xa')doExp($('#xf').value);
  save()});
 function img(f,max,cb){if(!f)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);cb(c.toDataURL('image/jpeg',.82))};im.src=r.result};r.readAsDataURL(f)}
-$('#fcov').onchange=e=>img(e.target.files[0],600,d=>{S.cover=d;pubPrev();save()});
+let ctgt=null;
+$('#fcov').onchange=e=>{const f=e.target.files[0];e.target.value='';img(f,600,d=>{(ctgt||S).cover=d;ctgt=null;pubPrev();if(V=='lib')show('lib');save()})};
 $('#fav').onchange=e=>img(e.target.files[0],220,d=>{S.author.avatar=d;show('me');save()});
 $('#bk').onclick=()=>dl('sao-luu-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(LIB),'application/json');
 $('#rs').onclick=()=>$('#rsf').click();
@@ -576,7 +581,10 @@ $('#ins').onclick=()=>{const o=$('#out').textContent,t=$('#text');if(!o)return;t
 $('#rep').onclick=()=>{const o=$('#out').textContent,t=$('#text');if(!o||sel[0]==sel[1]){$('#out').textContent='Hãy bôi đen đoạn cần thay trong bản thảo trước.\n\n'+o;return}t.value=t.value.slice(0,sel[0])+o+t.value.slice(sel[1]);ch().text=t.value;sel=[sel[0],sel[0]+o.length];count();save();tree()};
 $('#cp').onclick=()=>navigator.clipboard.writeText($('#out').textContent);
 document.documentElement.style.setProperty('--logo','url('+LOGO+')');$('link[rel=icon]').href=LOGO;
-theme();$('#ptitle').value=S.title;loadEd();models();bkInit();$('#ver').textContent='Phiên bản: 11-10-2026-b (cuộn một trang, đổi tên phần/chương)';
+theme();$('#ptitle').value=S.title;loadEd();models();bkInit();$('#ver').textContent='Phiên bản: 11-10-2026-c (kéo giãn khung AI, đổi bìa ở Tủ truyện)';
+(()=>{const h=$('#rsz'),v=$('#v-write'),set=w=>{w=Math.max(300,Math.min(760,w));v.style.gridTemplateColumns='260px 1fr '+w+'px';try{localStorage.setItem('xt_aiw',w)}catch(e){}};
+ try{const w=+localStorage.getItem('xt_aiw');if(w)set(w)}catch(e){}
+ h.onpointerdown=e=>{e.preventDefault();h.setPointerCapture(e.pointerId);h.onpointermove=m=>set(v.getBoundingClientRect().right-m.clientX-4)};h.onpointerup=()=>{h.onpointermove=null}})();
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 if(allCh()==1&&!S.parts[0].chapters[0].text&&!S.cards.length)V='start';
 $('#uchip').onclick=()=>{rv='home';setMode('write');show('me')};
