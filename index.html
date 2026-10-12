@@ -147,6 +147,7 @@ body.m-read #app-read{display:flex;flex-direction:column;height:100%}
 #instr{resize:vertical;min-height:56px}
 #rsz{position:absolute;left:0;top:0;bottom:0;width:9px;cursor:col-resize;border-radius:999px}#rsz:hover{background:color-mix(in srgb,var(--acc) 35%,transparent)}
 @media(max-width:900px){#v-write #left,#v-write #right{position:static;max-height:none;height:auto}#out{min-height:240px}#rsz{display:none}}
+.msg{margin:0 0 10px;padding:8px 12px;border-radius:14px;background:var(--panel);border:1px solid var(--line)}.msg.user{background:color-mix(in srgb,var(--acc) 14%,var(--paper));margin-left:26px}.msg.assistant{margin-right:26px}
 .sc{width:170px}.sc .row{margin-top:6px}.newb .cover{background:var(--panel);color:var(--accT);border:2px dashed var(--line);font-size:42px}
 .uc{display:flex;gap:8px;align-items:center;text-align:left;border-radius:16px;padding:8px 10px;width:100%}.uc .av{width:34px;height:34px;flex:none}.uc div{min-width:0}.uc b,.uc small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:900px){.rc{grid-template-columns:1fr}}
@@ -176,6 +177,7 @@ body.m-read #app-read{display:flex;flex-direction:column;height:100%}
   </section>
   <aside class="box" id="right"><div id="rsz" title="Kéo để đổi độ rộng khung AI"></div>
     <div><span id="dot" class="dot"></span><span id="st">Chưa kết nối AI</span></div>
+    <div class="seg" id="aimode"><button data-ai="tool" class="on">Công cụ</button><button data-ai="chat">Trò chuyện</button></div>
     <div class="grid">
       <button data-a="cont" class="pri">Viết tiếp</button><button data-a="draft">Viết từ tóm tắt</button>
       <button data-a="rew">Viết lại</button><button data-a="exp">Mở rộng</button>
@@ -183,8 +185,9 @@ body.m-read #app-read{display:flex;flex-direction:column;height:100%}
       <button data-a="outl">Dàn ý chương</button><button data-a="comic">Kịch bản comic</button>
       <button data-a="chk">Kiểm tra mâu thuẫn</button>
     </div>
+    <button id="awb" class="pri" style="width:100%">Tự viết các chương còn trống</button>
     <textarea id="instr" placeholder="Hoặc tự ra lệnh, ví dụ: Viết cảnh hai nhân vật cãi nhau trong mưa"></textarea>
-    <div class="row"><button id="send" class="pri">Gửi yêu cầu</button><button id="stop">Dừng</button></div>
+    <div class="row"><button id="send" class="pri">Gửi yêu cầu</button><button id="stop">Dừng</button><button id="cclr" hidden>Xóa trò chuyện</button></div>
     <div id="out" aria-live="polite">Kết quả của AI sẽ hiện ở đây.</div>
     <div class="row"><button id="ins">Chèn vào cuối</button><button id="rep">Thay phần bôi đen</button><button id="cp">Sao chép</button></div>
   </aside>
@@ -246,7 +249,7 @@ const setp=(p,v)=>{const k=p.split('.');let o=S;for(let i=0;i<k.length-1;i++)o=o
 function fix(){if(!S.parts.length)S.parts.push({title:'Phần 1',sum:'',open:true,chapters:[]});let[p,c]=S.cur;if(!S.parts[p]||!S.parts[p].chapters[c]){p=S.parts.findIndex(x=>x.chapters.length);if(p<0){p=0;S.parts[0].chapters.push({title:'Chương 1',sum:'',text:''})}S.cur=[p,0]}}
 const P=()=>S.parts[S.cur[0]],ch=()=>P().chapters[S.cur[1]];
 const allCh=()=>S.parts.reduce((a,p)=>a+p.chapters.length,0),words=()=>S.parts.reduce((a,p)=>a+p.chapters.reduce((b,c)=>b+wc(c.text),0),0);
-function save(){try{localStorage.setItem('xuongtruyen',JSON.stringify(LIB));$('#saved').textContent='Đã lưu '+new Date().toLocaleTimeString('vi-VN');bkSoon()}catch(e){$('#saved').textContent='Không lưu được, hãy bấm Sao lưu'}}
+function save(){try{localStorage.setItem('xuongtruyen',JSON.stringify(LIB));$('#saved').style.color='';$('#saved').textContent='Đã lưu '+new Date().toLocaleTimeString('vi-VN');bkSoon()}catch(e){$('#saved').textContent='Không lưu được! Hãy bấm Sao lưu ngay.';$('#saved').style.color='#c4552d';return}}
 function later(){clearTimeout(timer);timer=setTimeout(()=>{save();tree();stList()},500)}
 function theme(){document.documentElement.style.setProperty('--acc',S.theme.acc);document.documentElement.dataset.theme=S.theme.dark?'dark':'light'}
 function askText(l,v){return new Promise(r=>{$('#rnl').textContent=l;const i=$('#rni'),d=$('#rn');i.value=v||'';d.returnValue='';d.onclose=()=>r(d.returnValue=='ok'?i.value.trim():null);$('#rnok').onclick=()=>d.close('ok');i.onkeydown=e=>{if(e.key=='Enter'){e.preventDefault();d.close('ok')}};d.showModal();i.focus();i.select()})}
@@ -269,7 +272,7 @@ window.addEventListener('resize',()=>grow());
 function count(){grow();$('#count').textContent=wc($('#text').value)+' từ trong chương · '+words()+' từ cả truyện'}
 function chip(){const u=S.user,n=S.author.name||(u&&u.name)||'Chưa đặt bút danh',pic=S.author.avatar||(u&&u.pic);
  $('#uchip').innerHTML=(pic?`<img class="av" alt="" src="${esc(pic)}" referrerpolicy="no-referrer">`:`<span class="av">${esc(n[0])}</span>`)+`<div><b>${esc(n)}</b><small>${u?esc(u.email||'Đã đăng nhập Google'):'Chưa đăng nhập Google'}</small></div>`}
-function loadEd(){stList();chip();fix();P().open=true;$('#e_part').value=P().title;$('#e_title').value=ch().title;$('#e_sum').value=ch().sum||'';$('#text').value=ch().text;count();tree()}
+function loadEd(){stList();chip();fix();if(cm=='chat')chatDraw();P().open=true;$('#e_part').value=P().title;$('#e_title').value=ch().title;$('#e_sum').value=ch().sum||'';$('#text').value=ch().text;count();tree()}
 $('#e_part').oninput=e=>{P().title=e.target.value;later()};
 $('#e_title').oninput=e=>{ch().title=e.target.value;later()};
 $('#e_sum').oninput=e=>{ch().sum=e.target.value;later()};
@@ -293,10 +296,51 @@ async function analyze(){const t=$('#gtxt').value.trim(),o=$('#gres');if(!t)retu
 $('#gan').onclick=analyze;
 $('#gadd').onclick=()=>{$$('#gres [data-g]').forEach(c=>{if(c.checked){const p=prop[+c.dataset.g];S.cards.push({type:String(p.type||'Ghi chú'),name:String(p.name||''),body:String(p.body||''),on:1})}});$('#gd').close();save();show('cards')};
 
+/* ---------- Trợ lý trò chuyện & tự viết chương ---------- */
+let cm='tool',aw=false;
+const CHAT_SYS='\n\nVai trò hiện tại: bạn là đồng tác giả đang TRÒ CHUYỆN với tác giả. Nếu ý tưởng còn mơ hồ, hãy hỏi lại tối đa 3 câu ngắn (về không khí và giọng điệu, nhân vật chính, độc giả mục tiêu) rồi mới đề xuất hướng đi. Trả lời thân thiện, gọn, bằng tiếng Việt. Khi tác giả nhờ viết cảnh hoặc đoạn văn thì viết trực tiếp, không hỏi thêm.';
+const lastOut=()=>cm=='chat'?(((S.chat||[]).filter(m=>m.role=='assistant').slice(-1)[0])||{}).content||'':$('#out').textContent;
+function chatDraw(){const o=$('#out');o.innerHTML=(S.chat||[]).map(m=>`<div class="msg ${m.role}">${esc(m.content)}</div>`).join('')||'<span class="mute">Hãy kể ý tưởng của bạn hoặc hỏi mình bất cứ điều gì về truyện. Mình sẽ hỏi lại vài câu để hiểu rõ không khí, nhân vật và độc giả trước khi gợi ý.</span>';o.scrollTop=o.scrollHeight}
+async function chatSend(){const x=$('#instr').value.trim();if(!x)return;
+ if(!pm()&&!(await models())){$('#out').textContent='Chưa kết nối AI. Bấm Cài đặt để chọn nhà cung cấp và nhập API key.';return}
+ S.chat=S.chat||[];S.chat.push({role:'user',content:x});$('#instr').value='';const m={role:'assistant',content:''};S.chat.push(m);chatDraw();
+ ctl=new AbortController();
+ try{await llm(sys()+CHAT_SYS,S.chat.slice(0,-1).slice(-24),{on:t=>{m.content+=t;chatDraw()},signal:ctl.signal})}catch(e){if(e.name!='AbortError')m.content+='\n[Lỗi: '+e.message+']'}
+ ctl=null;if(!m.content)S.chat.pop();save();chatDraw()}
+$('#aimode').onclick=e=>{const b=e.target.closest('[data-ai]');if(!b)return;cm=b.dataset.ai;$$('#aimode button').forEach(x=>x.classList.toggle('on',x==b));
+ $('.grid').hidden=$('#awb').hidden=cm=='chat';$('#cclr').hidden=cm!='chat';$('#send').textContent=cm=='chat'?'Gửi':'Gửi yêu cầu';
+ $('#instr').placeholder=cm=='chat'?'Nhắn cho trợ lý… (Enter để gửi, Shift+Enter xuống dòng)':'Hoặc tự ra lệnh, ví dụ: Viết cảnh hai nhân vật cãi nhau trong mưa';
+ if(cm=='chat')chatDraw();else $('#out').textContent='Kết quả của AI sẽ hiện ở đây.'};
+$('#instr').onkeydown=e=>{if(cm=='chat'&&e.key=='Enter'&&!e.shiftKey){e.preventDefault();chatSend()}};
+$('#cclr').onclick=async()=>{if(await ask('Xóa toàn bộ cuộc trò chuyện của truyện này?')){S.chat=[];save();chatDraw()}};
+function autoPrompt(i,j){const f=flat(),k=f.findIndex(x=>x.i==i&&x.j==j),prev=f.slice(0,k).filter(x=>x.c.text.trim()),c=f[k].c,rec=prev.map(x=>x.c.title+': '+(x.c.rec||x.c.sum||x.c.text.slice(0,200))).join('\n'),last=prev.length?prev[prev.length-1].c.text.slice(-1500):'';
+ return 'Các chương trước (tóm tắt):\n'+(rec||'(chưa có)')+'\n\nĐoạn cuối chương trước:\n'+(last||'(chưa có)')+'\n\nHãy viết trọn vẹn chương "'+c.title+'"'+(c.sum?', nội dung chính: '+c.sum:'')+'. Khoảng 800-1200 từ, có miêu tả và đối thoại, nối liền mạch với phần trước, không nhắc lại những gì đã viết, không tóm tắt, không thêm tiêu đề. Chỉ trả về nội dung chương.'}
+async function autoWrite(){const out=$('#out'),btn=$('#awb');
+ if(aw){aw=false;ctl&&ctl.abort();return}
+ if(!pm()&&!(await models())){out.textContent='Chưa kết nối AI. Bấm Cài đặt để chọn nhà cung cấp và nhập API key.';return}
+ const todo=[];S.parts.forEach((p,i)=>p.chapters.forEach((c,j)=>{if(!c.text.trim())todo.push([i,j])}));
+ if(!todo.length){out.textContent='Không còn chương trống nào để viết. Hãy thêm chương mới (kèm tóm tắt) rồi bấm lại.';return}
+ if(!await ask('Tự viết '+todo.length+' chương còn trống? Mỗi chương AI viết khoảng 800-1200 từ, có thể mất vài phút (và tốn lượt dùng nếu bạn dùng dịch vụ online). Bạn bấm Dừng tự viết bất cứ lúc nào.'))return;
+ aw=true;btn.textContent='Dừng tự viết';let n=0;
+ for(const[i,j]of todo){if(!aw)break;n++;const c=S.parts[i].chapters[j];S.cur=[i,j];loadEd();
+  out.textContent='Đang viết '+c.title+' ('+n+'/'+todo.length+')…';c.text='';ctl=new AbortController();
+  try{await llm(sys(),autoPrompt(i,j),{on:t=>{c.text+=t;if(S.cur[0]==i&&S.cur[1]==j){$('#text').value=c.text;count()}},signal:ctl.signal})}catch(e){if(e.name!='AbortError'){out.textContent='Dừng vì lỗi: '+e.message;aw=false}}
+  c.text=c.text.trim();loadEd();save();if(!aw||!c.text)break;
+  try{c.rec=(await llm('Tóm tắt bằng tiếng Việt trong 2-3 câu: sự kiện chính, thay đổi của nhân vật và chi tiết cần nhớ cho các chương sau. Chỉ trả về bản tóm tắt.',c.text.slice(0,9000),{temp:.2})).trim();save()}catch(e){}}
+ if(out.textContent.startsWith('Đang viết'))out.textContent=aw?'Đã viết xong '+n+' chương. Hãy đọc lại và chỉnh sửa theo ý bạn.':'Đã dừng. Các chương đã viết được giữ lại.';
+ aw=false;btn.textContent='Tự viết các chương còn trống';ctl=null}
+$('#awb').onclick=autoWrite;
+
 /* ---------- Tủ truyện: nhiều truyện ---------- */
 const stW=st=>st.parts.reduce((a,p)=>a+p.chapters.reduce((b,c)=>b+wc(c.text),0),0),stC=st=>st.parts.reduce((a,p)=>a+p.chapters.length,0),stN=st=>st.title||'Truyện chưa đặt tên';
 function stList(){const e=$('#stsel');if(!e)return;e.innerHTML=LIB.stories.map(x=>`<option value="${x.id}">${esc(stN(x))}</option>`).join('')+'<option value="__new">+ Truyện mới…</option>';e.value=LIB.cur}
 function openStory(id){const st=LIB.stories.find(x=>x.id==id);if(!st)return;LIB.cur=id;S=mk(st);$('#ptitle').value=S.title;sx='';plan=null;pubSel.clear();fix();loadEd();save()}
+async function delStory(id){const st=LIB.stories.find(x=>x.id==id);if(!st)return;
+ const last=LIB.stories.length==1;
+ if(!await ask('Xóa truyện "'+stN(st)+'"? Toàn bộ chương và hồ sơ của truyện này sẽ mất.'+(last?' Đây là truyện duy nhất, nên sau khi xóa app sẽ tạo một truyện trống mới để bạn viết tiếp.':'')))return;
+ LIB.stories=LIB.stories.filter(x=>x!=st);if(!LIB.stories.length)LIB.stories.push(split(def())[0]);
+ if(!LIB.stories.some(x=>x.id==LIB.cur))openStory(LIB.stories[0].id);else{save();stList()}
+ show('lib');toast('Đã xóa truyện "'+stN(st)+'".')}
 function newStory(){const st=split(def())[0];st.title='';LIB.stories.push(st);openStory(st.id);show('start');toast('Đã tạo truyện mới. Hãy ném cho mình một ý tưởng hoặc dán bản thảo.')}
 $('#stsel').onchange=e=>{if(e.target.value=='__new')newStory();else{openStory(e.target.value);show(V=='lib'?'lib':'write')}};
 R.lib=()=>`<h2>Tủ truyện</h2><p class="hint">Bấm <b>Đổi bìa</b> dưới mỗi truyện để tải ảnh bìa (nên dùng ảnh dọc tỉ lệ 2:3, ví dụ 600×900). Mỗi truyện có hồ sơ, khung sườn, bìa và bản thảo riêng. Hồ sơ tác giả, màu giao diện và cài đặt AI dùng chung cho mọi truyện.</p><div class="shelf">${LIB.stories.map(st=>`<div class="sc"><button class="book" data-t="os" data-s="${st.id}"><div class="cover" style="${st.cover?`background-image:url(${st.cover})`:''}">${st.cover?'':esc(stN(st))}</div><b>${esc(stN(st))}</b><small>${stC(st)} chương · ${stW(st)} từ${st.id==LIB.cur?' · đang mở':''}</small></button><div class="row"><button data-t="os" data-s="${st.id}">Mở</button><button data-t="cv" data-s="${st.id}">Đổi bìa</button><button data-t="ds" data-s="${st.id}">Xóa</button></div></div>`).join('')}<div class="sc"><button class="book newb" data-t="ns"><div class="cover">+</div><b>Truyện mới</b></button></div></div>`;
@@ -360,7 +404,7 @@ document.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer&&
 /* ---------- Xuất bản ---------- */
 const av=big=>S.author.avatar?`<img class="av${big?' lg':''}" alt="" referrerpolicy="no-referrer" src="${S.author.avatar}">`:`<span class="av${big?' lg':''}">${esc((S.author.name||'?')[0])}</span>`;
 R.pub=()=>`<h2>Xuất bản</h2><p class="hint">Đây là nơi sửa thông tin hiển thị của truyện: ảnh bìa, thể loại, tình trạng, giới thiệu. Tủ truyện và Góc đọc truyện chỉ hiển thị lại các thông tin này. Bìa nên là ảnh dọc tỉ lệ 2:3 (ví dụ 600×900).</p><div class="two"><div>
-<div class="card"><h3>Trang truyện</h3>${F('genre','Thể loại (cách nhau bằng dấu phẩy)')}<label class="f"><span>Tình trạng</span><select data-p="status">${['Đang viết','Hoàn thành','Tạm ngưng'].map(o=>`<option${S.status==o?' selected':''}>${o}</option>`).join('')}</select></label>${F('blurb','Giới thiệu truyện',1,'Đoạn mô tả độc giả thấy đầu tiên')}<div class="row" style="margin-top:12px"><button data-t="cov" class="pri">Chọn ảnh bìa</button><button data-t="cov0">Bỏ ảnh bìa</button></div></div>
+<div class="card"><h3>Trang truyện</h3>${F('genre','Thể loại (cách nhau bằng dấu phẩy)')}<label class="f"><span>Tình trạng</span><select data-p="status">${['Đang viết','Hoàn thành','Tạm ngưng'].map(o=>`<option${S.status==o?' selected':''}>${o}</option>`).join('')}</select></label>${F('blurb','Giới thiệu truyện',1,'Đoạn mô tả độc giả thấy đầu tiên')}<div class="row" style="margin-top:12px"><button data-t="cov" class="pri">Chọn ảnh bìa</button><button data-t="cov0">Bỏ ảnh bìa</button><button data-t="dsc">Xóa truyện này</button></div></div>
 <div class="card"><h3>Xuất bản chương</h3>${S.parts.map((p,i)=>`<b>${esc(p.title)}</b>`+p.chapters.map((c,j)=>`<label class="chk"><input type="checkbox" data-s="${i}-${j}"${pubSel.has(i+'-'+j)?' checked':''}><span>${esc(c.title)} <small>${wc(c.text)} từ</small></span></label>`).join('')).join('')}
 <div class="row"><button data-t="sa">Chọn tất cả</button><button data-t="sn">Bỏ chọn</button></div>
 <label class="f"><span>Định dạng</span><select id="xf"><option value="docx">Word / Google Docs (.docx)</option><option value="epub">Sách điện tử (.epub)</option><option value="html">Trang HTML (in ra PDF)</option><option value="md">Markdown (.md)</option><option value="txt">Văn bản (.txt)</option></select></label>
@@ -445,7 +489,8 @@ $('#main').addEventListener('click',async e=>{const b=e.target.closest('[data-t]
  if(t=='dl'&&await ask('Xóa thẻ này?')){S.cards.splice(i,1);show('cards')}
  if(t=='os'){openStory(b.dataset.s);show('write')}
  if(t=='ns')newStory();
- if(t=='ds'){const st=LIB.stories.find(x=>x.id==b.dataset.s);if(st&&await ask('Xóa truyện "'+stN(st)+'"? Toàn bộ chương và hồ sơ của truyện này sẽ mất.')){LIB.stories=LIB.stories.filter(x=>x!=st);if(!LIB.stories.length)LIB.stories.push(split(def())[0]);if(LIB.cur==st.id)openStory(LIB.stories[0].id);else{save();stList()}show('lib')}}
+ if(t=='ds')delStory(b.dataset.s);
+ if(t=='dsc')delStory(LIB.cur);
  if(t=='sup'){fmode='start';$('#fimp').click()}
  if(t=='sm'){sx=$('#sidea').value;smode=b.dataset.v;show('start')}
  if(t=='sgo')startRun();
@@ -531,11 +576,11 @@ const aiSave=()=>{try{localStorage.setItem('xt_ai',JSON.stringify(AI))}catch(e){
 const pm=()=>AI.p=='ollama'?S.cfg.model:AI.m[AI.p];
 async function sse(r,f){const rd=r.body.getReader(),dc=new TextDecoder();let b='';for(;;){const{done,value}=await rd.read();if(done)break;b+=dc.decode(value,{stream:true});const ls=b.split('\n');b=ls.pop();for(const l of ls){const t=l.trim();if(t.startsWith('data:')&&!/\[DONE\]/.test(t)){try{f(JSON.parse(t.slice(5)))}catch(e){}}}}}
 async function llm(sy,us,o={}){const p=AI.p,k=AI.k[p]||'',m=pm(),T=o.temp!=null?o.temp:S.cfg.temp;let out='';const add=t=>{if(t){out+=t;o.on&&o.on(t)}};
- const H=p=='ollama'?{}:{'Content-Type':'application/json'};let url,body;
- if(p=='ollama'){url=S.cfg.url.replace(/\/$/,'')+'/api/chat';body={model:m,stream:true,options:{temperature:T},messages:[{role:'system',content:sy},{role:'user',content:us}]};if(o.json)body.format='json'}
- else if(p=='gemini'){url='https://generativelanguage.googleapis.com/v1beta/models/'+m+':streamGenerateContent?alt=sse';H['x-goog-api-key']=k;body={systemInstruction:{parts:[{text:sy}]},contents:[{role:'user',parts:[{text:us}]}],generationConfig:{temperature:T}}}
- else if(p=='claude'){url='https://api.anthropic.com/v1/messages';H['x-api-key']=k;H['anthropic-version']='2023-06-01';H['anthropic-dangerous-direct-browser-access']='true';body={model:m,max_tokens:4096,temperature:Math.min(T,1),system:sy,messages:[{role:'user',content:us}],stream:true}}
- else{url=AI.u.replace(/\/$/,'')+'/chat/completions';H.Authorization='Bearer '+k;body={model:m,stream:true,temperature:T,messages:[{role:'system',content:sy},{role:'user',content:us}]}}
+ const H=p=='ollama'?{}:{'Content-Type':'application/json'};const M=Array.isArray(us)?us:[{role:'user',content:us}];let url,body;
+ if(p=='ollama'){url=S.cfg.url.replace(/\/$/,'')+'/api/chat';body={model:m,stream:true,options:{temperature:T},messages:[{role:'system',content:sy},...M]};if(o.json)body.format='json'}
+ else if(p=='gemini'){url='https://generativelanguage.googleapis.com/v1beta/models/'+m+':streamGenerateContent?alt=sse';H['x-goog-api-key']=k;body={systemInstruction:{parts:[{text:sy}]},contents:M.map(m=>({role:m.role=='assistant'?'model':'user',parts:[{text:m.content}]})),generationConfig:{temperature:T}}}
+ else if(p=='claude'){url='https://api.anthropic.com/v1/messages';H['x-api-key']=k;H['anthropic-version']='2023-06-01';H['anthropic-dangerous-direct-browser-access']='true';body={model:m,max_tokens:4096,temperature:Math.min(T,1),system:sy,messages:M,stream:true}}
+ else{url=AI.u.replace(/\/$/,'')+'/chat/completions';H.Authorization='Bearer '+k;body={model:m,stream:true,temperature:T,messages:[{role:'system',content:sy},...M]}}
  const r=await fetch(url,{method:'POST',headers:H,body:JSON.stringify(body),signal:o.signal});
  if(!r.ok){let e='';try{const j=await r.json();e=(j.error&&(j.error.message||j.error))||JSON.stringify(j)}catch(x){}throw new Error('HTTP '+r.status+(e?' · '+String(e).slice(0,200):''))}
  if(p=='ollama'){const rd=r.body.getReader(),dc=new TextDecoder();let b='';for(;;){const{done,value}=await rd.read();if(done)break;b+=dc.decode(value,{stream:true});const ls=b.split('\n');b=ls.pop();for(const l of ls){try{const j=JSON.parse(l);j.message&&add(j.message.content)}catch(e){}}}}
@@ -564,7 +609,7 @@ $('#c_x').onclick=()=>$('#dlg').close();
 $('#c_ok').onclick=async()=>{cfgRead();const mv=$('#c_model').value;if(mv){if(AI.p=='ollama')S.cfg.model=mv;else AI.m[AI.p]=mv}aiSave();save();await models();$('#dlg').close()};
 
 /* ---------- AI viết ---------- */
-function sys(){const c=S.cards.filter(x=>x.on&&(x.name||x.body)).map(x=>`[${x.type}] ${x.name}: ${x.body}`).join('\n'),o=S.parts.map(p=>`${p.title}: ${p.sum}\n`+p.chapters.map(h=>`  · ${h.title}: ${h.sum}`).join('\n')).join('\n');
+function sys(){const c=S.cards.filter(x=>x.on&&(x.name||x.body)).map(x=>`[${x.type}] ${x.name}: ${x.body}`).join('\n'),o=S.parts.map(p=>`${p.title}: ${p.sum}\n`+p.chapters.map(h=>`  · ${h.title}: ${h.sum}${h.rec?' | Đã viết: '+h.rec:''}`).join('\n')).join('\n');
  return `Bạn là đồng tác giả và biên tập viên truyện, viết bằng tiếng Việt tự nhiên, giàu hình ảnh, không sáo rỗng. Chỉ trả về nội dung được yêu cầu, không lời dẫn thừa. Tuân thủ hồ sơ truyện sau, không tự thêm chi tiết mâu thuẫn.\n\n[Tên truyện] ${S.title}\n[Thể loại] ${S.genre}\n${c}\n\n[Khung sườn]\n${o}\n\n[Đang viết] ${P().title} / ${ch().title}${ch().sum?' – '+ch().sum:''}`}
 const T={cont:'Viết tiếp khoảng 300-500 từ, nối liền mạch với đoạn cuối, không lặp lại nội dung đã có.',draft:'Dựa trên tóm tắt chương sau, viết bản thảo khoảng 800 từ đúng văn phong và nhân vật trong hồ sơ.',rew:'Viết lại đoạn sau cho hay và mượt hơn, giữ nguyên ý và sự kiện.',exp:'Mở rộng đoạn sau với chi tiết giác quan, nội tâm và đối thoại, giữ nguyên diễn biến.',sht:'Rút gọn đoạn sau còn khoảng một nửa, giữ ý chính và giọng văn.',idea:'Dựa trên hồ sơ và bản thảo, đề xuất 5 hướng phát triển cốt truyện tiếp theo, mỗi hướng 2-3 câu, nêu rõ xung đột và điều bất ngờ.',outl:'Lập dàn ý chi tiết cho chương này theo từng cảnh: bối cảnh, nhân vật, diễn biến, cảm xúc, câu móc cuối cảnh.',comic:'Chuyển nội dung sau thành kịch bản truyện tranh. Chia theo trang và khung: mô tả hình ảnh, góc máy, lời thoại, ghi chú âm thanh. Mỗi khung kèm một dòng prompt tiếng Anh để tạo ảnh.',chk:'Đối chiếu bản thảo với hồ sơ truyện, liệt kê các điểm mâu thuẫn hoặc vô lý về nhân vật, thời gian, bối cảnh, và gợi ý cách sửa.'};
 function build(a,x){const f=ch().text,s=f.slice(sel[0],sel[1]);let b;
@@ -579,13 +624,13 @@ async function run(a){const x=$('#instr').value.trim(),out=$('#out');if(!a&&!x){
  catch(e){if(e.name!='AbortError')out.textContent+='\n[Lỗi: '+e.message+']'}
  ctl=null}
 $$('[data-a]').forEach(b=>b.onclick=()=>run(b.dataset.a));
-$('#send').onclick=()=>run('');
+$('#send').onclick=()=>cm=='chat'?chatSend():run('');
 $('#stop').onclick=()=>ctl&&ctl.abort();
-$('#ins').onclick=()=>{const o=$('#out').textContent,t=$('#text');if(!o)return;t.value+=(t.value&&!t.value.endsWith('\n')?'\n\n':'')+o;ch().text=t.value;count();save();tree()};
-$('#rep').onclick=()=>{const o=$('#out').textContent,t=$('#text');if(!o||sel[0]==sel[1]){$('#out').textContent='Hãy bôi đen đoạn cần thay trong bản thảo trước.\n\n'+o;return}t.value=t.value.slice(0,sel[0])+o+t.value.slice(sel[1]);ch().text=t.value;sel=[sel[0],sel[0]+o.length];count();save();tree()};
-$('#cp').onclick=()=>navigator.clipboard.writeText($('#out').textContent);
+$('#ins').onclick=()=>{const o=lastOut(),t=$('#text');if(!o)return;t.value+=(t.value&&!t.value.endsWith('\n')?'\n\n':'')+o;ch().text=t.value;count();save();tree()};
+$('#rep').onclick=()=>{const o=lastOut(),t=$('#text');if(!o)return;if(sel[0]==sel[1]){toast('Hãy bôi đen đoạn cần thay trong bản thảo trước.');return}t.value=t.value.slice(0,sel[0])+o+t.value.slice(sel[1]);ch().text=t.value;sel=[sel[0],sel[0]+o.length];count();save();tree()};
+$('#cp').onclick=()=>navigator.clipboard.writeText(lastOut());
 document.documentElement.style.setProperty('--logo','url('+LOGO+')');$('link[rel=icon]').href=LOGO;
-theme();$('#ptitle').value=S.title;loadEd();models();bkInit();$('#ver').textContent='Phiên bản: 11-10-2026-f (thanh bên: ghim đầu và cuối, phần giữa cuộn)';
+theme();$('#ptitle').value=S.title;loadEd();models();bkInit();$('#ver').textContent='Phiên bản: 11-10-2026-h (trợ lý trò chuyện, tự viết các chương còn trống)';
 (()=>{const h=$('#rsz'),v=$('#v-write'),set=w=>{w=Math.max(300,Math.min(760,w));v.style.gridTemplateColumns='260px 1fr '+w+'px';try{localStorage.setItem('xt_aiw',w)}catch(e){}};
  try{const w=+localStorage.getItem('xt_aiw');if(w)set(w)}catch(e){}
  h.onpointerdown=e=>{e.preventDefault();h.setPointerCapture(e.pointerId);h.onpointermove=m=>set(v.getBoundingClientRect().right-m.clientX-4)};h.onpointerup=()=>{h.onpointermove=null}})();
