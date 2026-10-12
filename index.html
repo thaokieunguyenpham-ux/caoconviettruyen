@@ -148,6 +148,7 @@ body.m-read #app-read{display:flex;flex-direction:column;height:100%}
 #rsz{position:absolute;left:0;top:0;bottom:0;width:9px;cursor:col-resize;border-radius:999px}#rsz:hover{background:color-mix(in srgb,var(--acc) 35%,transparent)}
 @media(max-width:900px){#v-write #left,#v-write #right{position:static;max-height:none;height:auto}#out{min-height:240px}#rsz{display:none}}
 .msg{margin:0 0 10px;padding:8px 12px;border-radius:14px;background:var(--panel);border:1px solid var(--line)}.msg.user{background:color-mix(in srgb,var(--acc) 14%,var(--paper));margin-left:26px}.msg.assistant{margin-right:26px}
+.x2{border:0;background:transparent;padding:0 2px 0 6px;cursor:pointer;border-radius:999px}#docs{gap:6px}
 .sc{width:170px}.sc .row{margin-top:6px}.newb .cover{background:var(--panel);color:var(--accT);border:2px dashed var(--line);font-size:42px}
 .uc{display:flex;gap:8px;align-items:center;text-align:left;border-radius:16px;padding:8px 10px;width:100%}.uc .av{width:34px;height:34px;flex:none}.uc div{min-width:0}.uc b,.uc small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:900px){.rc{grid-template-columns:1fr}}
@@ -187,7 +188,7 @@ body.m-read #app-read{display:flex;flex-direction:column;height:100%}
     </div>
     <button id="awb" class="pri" style="width:100%">Tự viết các chương còn trống</button>
     <textarea id="instr" placeholder="Hoặc tự ra lệnh, ví dụ: Viết cảnh hai nhân vật cãi nhau trong mưa"></textarea>
-    <div class="row"><button id="send" class="pri">Gửi yêu cầu</button><button id="stop">Dừng</button><button id="cclr" hidden>Xóa trò chuyện</button></div>
+    <div class="row"><button id="send" class="pri">Gửi yêu cầu</button><button id="stop">Dừng</button><button id="cclr" hidden>Xóa trò chuyện</button><button id="attb" hidden>Đính kèm file</button></div><div id="docs" class="row" hidden></div>
     <div id="out" aria-live="polite">Kết quả của AI sẽ hiện ở đây.</div>
     <div class="row"><button id="ins">Chèn vào cuối</button><button id="rep">Thay phần bôi đen</button><button id="cp">Sao chép</button></div>
   </aside>
@@ -272,7 +273,7 @@ window.addEventListener('resize',()=>grow());
 function count(){grow();$('#count').textContent=wc($('#text').value)+' từ trong chương · '+words()+' từ cả truyện'}
 function chip(){const u=S.user,n=S.author.name||(u&&u.name)||'Chưa đặt bút danh',pic=S.author.avatar||(u&&u.pic);
  $('#uchip').innerHTML=(pic?`<img class="av" alt="" src="${esc(pic)}" referrerpolicy="no-referrer">`:`<span class="av">${esc(n[0])}</span>`)+`<div><b>${esc(n)}</b><small>${u?esc(u.email||'Đã đăng nhập Google'):'Chưa đăng nhập Google'}</small></div>`}
-function loadEd(){stList();chip();fix();if(cm=='chat')chatDraw();P().open=true;$('#e_part').value=P().title;$('#e_title').value=ch().title;$('#e_sum').value=ch().sum||'';$('#text').value=ch().text;count();tree()}
+function loadEd(){stList();chip();fix();if(cm=='chat'){chatDraw();drawDocs()}P().open=true;$('#e_part').value=P().title;$('#e_title').value=ch().title;$('#e_sum').value=ch().sum||'';$('#text').value=ch().text;count();tree()}
 $('#e_part').oninput=e=>{P().title=e.target.value;later()};
 $('#e_title').oninput=e=>{ch().title=e.target.value;later()};
 $('#e_sum').oninput=e=>{ch().sum=e.target.value;later()};
@@ -300,19 +301,28 @@ $('#gadd').onclick=()=>{$$('#gres [data-g]').forEach(c=>{if(c.checked){const p=p
 let cm='tool',aw=false;
 const CHAT_SYS='\n\nVai trò hiện tại: bạn là đồng tác giả đang TRÒ CHUYỆN với tác giả. Nếu ý tưởng còn mơ hồ, hãy hỏi lại tối đa 3 câu ngắn (về không khí và giọng điệu, nhân vật chính, độc giả mục tiêu) rồi mới đề xuất hướng đi. Trả lời thân thiện, gọn, bằng tiếng Việt. Khi tác giả nhờ viết cảnh hoặc đoạn văn thì viết trực tiếp, không hỏi thêm.';
 const lastOut=()=>cm=='chat'?(((S.chat||[]).filter(m=>m.role=='assistant').slice(-1)[0])||{}).content||'':$('#out').textContent;
-function chatDraw(){const o=$('#out');o.innerHTML=(S.chat||[]).map(m=>`<div class="msg ${m.role}">${esc(m.content)}</div>`).join('')||'<span class="mute">Hãy kể ý tưởng của bạn hoặc hỏi mình bất cứ điều gì về truyện. Mình sẽ hỏi lại vài câu để hiểu rõ không khí, nhân vật và độc giả trước khi gợi ý.</span>';o.scrollTop=o.scrollHeight}
+function chatDraw(){const o=$('#out');o.innerHTML=(S.chat||[]).map(m=>`<div class="msg ${m.role}">${esc(m.content)}</div>`).join('')||'<span class="mute">Hãy kể ý tưởng của bạn, đính kèm file (.txt, .md, .docx) hoặc hỏi mình bất cứ điều gì về truyện. Mình sẽ hỏi lại vài câu để hiểu rõ không khí, nhân vật và độc giả trước khi gợi ý.</span>';o.scrollTop=o.scrollHeight}
 async function chatSend(){const x=$('#instr').value.trim();if(!x)return;
  if(!pm()&&!(await models())){$('#out').textContent='Chưa kết nối AI. Bấm Cài đặt để chọn nhà cung cấp và nhập API key.';return}
  S.chat=S.chat||[];S.chat.push({role:'user',content:x});$('#instr').value='';const m={role:'assistant',content:''};S.chat.push(m);chatDraw();
  ctl=new AbortController();
- try{await llm(sys()+CHAT_SYS,S.chat.slice(0,-1).slice(-24),{on:t=>{m.content+=t;chatDraw()},signal:ctl.signal})}catch(e){if(e.name!='AbortError')m.content+='\n[Lỗi: '+e.message+']'}
+ try{const sy=sys()+CHAT_SYS+docsText(),hist=S.chat.slice(0,-1).slice(-24);await llm(sy,hist,{ctx:ctxFor(sy,hist),on:t=>{m.content+=t;chatDraw()},signal:ctl.signal})}catch(e){if(e.name!='AbortError')m.content+='\n[Lỗi: '+e.message+']'}
  ctl=null;if(!m.content)S.chat.pop();save();chatDraw()}
 $('#aimode').onclick=e=>{const b=e.target.closest('[data-ai]');if(!b)return;cm=b.dataset.ai;$$('#aimode button').forEach(x=>x.classList.toggle('on',x==b));
- $('.grid').hidden=$('#awb').hidden=cm=='chat';$('#cclr').hidden=cm!='chat';$('#send').textContent=cm=='chat'?'Gửi':'Gửi yêu cầu';
+ $('.grid').hidden=$('#awb').hidden=cm=='chat';$('#cclr').hidden=$('#attb').hidden=$('#docs').hidden=cm!='chat';$('#send').textContent=cm=='chat'?'Gửi':'Gửi yêu cầu';
  $('#instr').placeholder=cm=='chat'?'Nhắn cho trợ lý… (Enter để gửi, Shift+Enter xuống dòng)':'Hoặc tự ra lệnh, ví dụ: Viết cảnh hai nhân vật cãi nhau trong mưa';
- if(cm=='chat')chatDraw();else $('#out').textContent='Kết quả của AI sẽ hiện ở đây.'};
+ if(cm=='chat'){chatDraw();drawDocs()}else $('#out').textContent='Kết quả của AI sẽ hiện ở đây.'};
 $('#instr').onkeydown=e=>{if(cm=='chat'&&e.key=='Enter'&&!e.shiftKey){e.preventDefault();chatSend()}};
 $('#cclr').onclick=async()=>{if(await ask('Xóa toàn bộ cuộc trò chuyện của truyện này?')){S.chat=[];save();chatDraw()}};
+function docsText(){return (S.docs||[]).length?'\n\n[Tài liệu tác giả đính kèm: dùng làm tư liệu tham khảo, không tự ý đổi nội dung của chúng]\n'+S.docs.map(d=>'--- '+d.name+' ---\n'+d.text).join('\n\n'):''}
+const ctxFor=(sy,h)=>(S.docs||[]).length?Math.min(16384,Math.max(4096,Math.ceil((sy.length+JSON.stringify(h).length)/2/1024)*1024)):0;
+function drawDocs(){const d=S.docs||[],tot=d.reduce((a,x)=>a+x.text.length,0);
+ $('#docs').innerHTML=(d.map((x,i)=>`<span class="chip">${esc(x.name)} · ${Math.max(1,Math.round(x.text.length/1000))}k ký tự${x.cut?' (đã cắt bớt)':''}<button class="x2" data-dx="${i}" aria-label="Gỡ file ${esc(x.name)}">✕</button></span>`).join('')||'<small class="mute">Chưa có file đính kèm. Bấm "Đính kèm file" hoặc kéo thả file vào trang.</small>')+(AI.p=='ollama'&&tot>12000?'<small class="mute" style="width:100%">Mô hình chạy trên máy đọc tài liệu dài sẽ chậm và có thể bỏ sót chi tiết. Với tài liệu dài, nên dùng Gemini.</small>':'')}
+function addDoc(name,t){S.docs=S.docs||[];let cut=false;if(t.length>40000){t=t.slice(0,40000);cut=true}
+ if(S.docs.reduce((a,x)=>a+x.text.length,0)+t.length>80000){toast('Tài liệu đính kèm quá nhiều (tối đa khoảng 80.000 ký tự). Hãy gỡ bớt file.');return}
+ S.docs.push({name,text:t,cut});save();drawDocs();toast('Đã đính kèm "'+name+'"'+(cut?' (chỉ lấy 40.000 ký tự đầu)':'')+'.')}
+$('#attb').onclick=()=>{fmode='att';$('#fimp').multiple=true;$('#fimp').click()};
+$('#docs').onclick=e=>{const b=e.target.closest('[data-dx]');if(b){S.docs.splice(+b.dataset.dx,1);save();drawDocs()}};
 function autoPrompt(i,j){const f=flat(),k=f.findIndex(x=>x.i==i&&x.j==j),prev=f.slice(0,k).filter(x=>x.c.text.trim()),c=f[k].c,rec=prev.map(x=>x.c.title+': '+(x.c.rec||x.c.sum||x.c.text.slice(0,200))).join('\n'),last=prev.length?prev[prev.length-1].c.text.slice(-1500):'';
  return 'Các chương trước (tóm tắt):\n'+(rec||'(chưa có)')+'\n\nĐoạn cuối chương trước:\n'+(last||'(chưa có)')+'\n\nHãy viết trọn vẹn chương "'+c.title+'"'+(c.sum?', nội dung chính: '+c.sum:'')+'. Khoảng 800-1200 từ, có miêu tả và đối thoại, nối liền mạch với phần trước, không nhắc lại những gì đã viết, không tóm tắt, không thêm tiêu đề. Chỉ trả về nội dung chương.'}
 async function autoWrite(){const out=$('#out'),btn=$('#awb');
@@ -391,13 +401,14 @@ async function importText(t,name){const ps=parseDraft(t,name.replace(/\.[^.]+$/,
  if(!await ask('Nhập "'+name+'": '+ps.length+' phần, '+n+' chương, khoảng '+w+' từ. Thêm vào truyện?'))return;
  const c0=S.parts[0].chapters[0],empty=allCh()==1&&!c0.text&&!c0.sum&&S.parts.length==1;
  if(empty)S.parts=ps;else S.parts.push(...ps);S.cur=[S.parts.length-ps.length,0];fix();loadEd();save();show('write')}
-async function handleFile(f,mode){try{const t=await readFile(f),m=mode||($('#gd').open?'gd':V=='start'?'start':'imp');
+async function handleFile(f,mode){try{const t=await readFile(f),m=mode||($('#gd').open?'gd':V=='start'?'start':cm=='chat'?'att':'imp');
+ if(m=='att'){addDoc(f.name,t);return}
  if(m=='gd'){$('#gtxt').value=t;if(!$('#gd').open)$('#gd').showModal();return}
  if(m=='start'){sx=t;smode='draft';show('start');toast('Đã tải "'+f.name+'". Bấm Bắt đầu viết để AI đọc.');return}
  await importText(t,f.name)}catch(e){toast(e.message);if($('#sres'))$('#sres').textContent=e.message}}
 $('#impb').onclick=()=>{fmode='imp';$('#fimp').click()};
 $('#gup').onclick=()=>{fmode='gd';$('#fimp').click()};
-$('#fimp').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)handleFile(f,fmode)};
+$('#fimp').onchange=async e=>{const fs=[...e.target.files];e.target.value='';e.target.multiple=false;for(const f of fs)await handleFile(f,fmode)};
 document.addEventListener('dragover',e=>e.preventDefault());
 document.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer&&e.dataTransfer.files[0];if(f&&mode=='write')handleFile(f,'')});
 
@@ -577,7 +588,7 @@ const pm=()=>AI.p=='ollama'?S.cfg.model:AI.m[AI.p];
 async function sse(r,f){const rd=r.body.getReader(),dc=new TextDecoder();let b='';for(;;){const{done,value}=await rd.read();if(done)break;b+=dc.decode(value,{stream:true});const ls=b.split('\n');b=ls.pop();for(const l of ls){const t=l.trim();if(t.startsWith('data:')&&!/\[DONE\]/.test(t)){try{f(JSON.parse(t.slice(5)))}catch(e){}}}}}
 async function llm(sy,us,o={}){const p=AI.p,k=AI.k[p]||'',m=pm(),T=o.temp!=null?o.temp:S.cfg.temp;let out='';const add=t=>{if(t){out+=t;o.on&&o.on(t)}};
  const H=p=='ollama'?{}:{'Content-Type':'application/json'};const M=Array.isArray(us)?us:[{role:'user',content:us}];let url,body;
- if(p=='ollama'){url=S.cfg.url.replace(/\/$/,'')+'/api/chat';body={model:m,stream:true,options:{temperature:T},messages:[{role:'system',content:sy},...M]};if(o.json)body.format='json'}
+ if(p=='ollama'){url=S.cfg.url.replace(/\/$/,'')+'/api/chat';body={model:m,stream:true,options:{temperature:T},messages:[{role:'system',content:sy},...M]};if(o.json)body.format='json';if(o.ctx)body.options.num_ctx=o.ctx}
  else if(p=='gemini'){url='https://generativelanguage.googleapis.com/v1beta/models/'+m+':streamGenerateContent?alt=sse';H['x-goog-api-key']=k;body={systemInstruction:{parts:[{text:sy}]},contents:M.map(m=>({role:m.role=='assistant'?'model':'user',parts:[{text:m.content}]})),generationConfig:{temperature:T}}}
  else if(p=='claude'){url='https://api.anthropic.com/v1/messages';H['x-api-key']=k;H['anthropic-version']='2023-06-01';H['anthropic-dangerous-direct-browser-access']='true';body={model:m,max_tokens:4096,temperature:Math.min(T,1),system:sy,messages:M,stream:true}}
  else{url=AI.u.replace(/\/$/,'')+'/chat/completions';H.Authorization='Bearer '+k;body={model:m,stream:true,temperature:T,messages:[{role:'system',content:sy},...M]}}
@@ -630,7 +641,7 @@ $('#ins').onclick=()=>{const o=lastOut(),t=$('#text');if(!o)return;t.value+=(t.v
 $('#rep').onclick=()=>{const o=lastOut(),t=$('#text');if(!o)return;if(sel[0]==sel[1]){toast('Hãy bôi đen đoạn cần thay trong bản thảo trước.');return}t.value=t.value.slice(0,sel[0])+o+t.value.slice(sel[1]);ch().text=t.value;sel=[sel[0],sel[0]+o.length];count();save();tree()};
 $('#cp').onclick=()=>navigator.clipboard.writeText(lastOut());
 document.documentElement.style.setProperty('--logo','url('+LOGO+')');$('link[rel=icon]').href=LOGO;
-theme();$('#ptitle').value=S.title;loadEd();models();bkInit();$('#ver').textContent='Phiên bản: 11-10-2026-h (trợ lý trò chuyện, tự viết các chương còn trống)';
+theme();$('#ptitle').value=S.title;loadEd();models();bkInit();$('#ver').textContent='Phiên bản: 11-10-2026-i (đính kèm file trong Trò chuyện)';
 (()=>{const h=$('#rsz'),v=$('#v-write'),set=w=>{w=Math.max(300,Math.min(760,w));v.style.gridTemplateColumns='260px 1fr '+w+'px';try{localStorage.setItem('xt_aiw',w)}catch(e){}};
  try{const w=+localStorage.getItem('xt_aiw');if(w)set(w)}catch(e){}
  h.onpointerdown=e=>{e.preventDefault();h.setPointerCapture(e.pointerId);h.onpointermove=m=>set(v.getBoundingClientRect().right-m.clientX-4)};h.onpointerup=()=>{h.onpointermove=null}})();
