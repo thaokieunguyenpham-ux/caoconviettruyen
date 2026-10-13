@@ -149,6 +149,30 @@ body.m-read #app-read{display:flex;flex-direction:column;height:100%}
 @media(max-width:900px){#v-write #left,#v-write #right{position:static;max-height:none;height:auto}#out{min-height:240px}#rsz{display:none}}
 .msg{margin:0 0 10px;padding:8px 12px;border-radius:14px;background:var(--panel);border:1px solid var(--line)}.msg.user{background:color-mix(in srgb,var(--acc) 14%,var(--paper));margin-left:26px}.msg.assistant{margin-right:26px}
 .x2{border:0;background:transparent;padding:0 2px 0 6px;cursor:pointer;border-radius:999px}#docs{gap:6px}
+button{transition:transform .15s,background-color .18s,border-color .18s,box-shadow .18s,filter .18s,padding-left .18s,color .18s}
+button:not(:disabled):hover{transform:translateY(-1px)}
+button:not(:disabled):active{transform:translateY(0) scale(.97)}
+button.pri:not(:disabled):hover{filter:brightness(1.1);box-shadow:0 4px 14px color-mix(in srgb,var(--acc) 35%,transparent)}
+#nav button{position:relative}
+#nav button::before{content:'';position:absolute;left:5px;top:50%;width:4px;height:0;border-radius:4px;background:var(--acc);transform:translateY(-50%);transition:height .18s}
+#nav button:hover:not(.on){background:color-mix(in srgb,var(--acc) 15%,transparent);color:var(--accT);padding-left:22px;transform:none}
+#nav button:hover:not(.on)::before{height:55%}
+#nav button.on:hover{filter:brightness(1.07);transform:none}
+.rtab button:hover:not(.on),.seg button:hover:not(.on){background:color-mix(in srgb,var(--acc) 15%,transparent);color:var(--accT);transform:none}
+.ci button:first-child:hover,.ph button:first-child:hover{background:color-mix(in srgb,var(--acc) 12%,var(--paper))}
+.book .cover{transition:transform .2s,box-shadow .2s}.book:hover .cover{transform:translateY(-5px);box-shadow:0 12px 26px color-mix(in srgb,var(--acc) 30%,transparent)}.book:hover{transform:none}
+#aib{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 16px;border-radius:999px;background:var(--panel);border:1px solid var(--acc);box-shadow:0 8px 28px color-mix(in srgb,var(--acc) 30%,transparent)}
+#aib button{border-radius:999px;padding:3px 12px}
+.spin{width:15px;height:15px;border:2.5px solid color-mix(in srgb,var(--acc) 28%,transparent);border-top-color:var(--acc);border-radius:50%;animation:rot .8s linear infinite}
+#aibt::after{content:'';animation:dots 1.2s steps(1,end) infinite}
+#right.busy .dot{animation:pulse 1s ease-in-out infinite}
+#right::before{content:'';position:absolute;left:14px;right:14px;top:0;height:3px;border-radius:3px;opacity:0;background:linear-gradient(90deg,transparent,var(--acc),transparent) no-repeat;background-size:40% 100%;transition:opacity .2s}
+#right.busy::before{opacity:1;animation:slide 1.1s linear infinite}
+@keyframes dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+@keyframes rot{to{transform:rotate(360deg)}}
+@keyframes slide{0%{background-position:-60% 0}100%{background-position:160% 0}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(1.6)}}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}}
 .sc{width:170px}.sc .row{margin-top:6px}.newb .cover{background:var(--panel);color:var(--accT);border:2px dashed var(--line);font-size:42px}
 .uc{display:flex;gap:8px;align-items:center;text-align:left;border-radius:16px;padding:8px 10px;width:100%}.uc .av{width:34px;height:34px;flex:none}.uc div{min-width:0}.uc b,.uc small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:900px){.rc{grid-template-columns:1fr}}
@@ -197,6 +221,7 @@ body.m-read #app-read{display:flex;flex-direction:column;height:100%}
 </main>
 <div id="app-read"></div>
 <input type="file" id="fcov" accept="image/*" hidden><input type="file" id="fimp" accept=".txt,.md,.markdown,.docx" hidden><input type="file" id="fav" accept="image/*" hidden>
+<div id="aib" role="status" aria-live="polite" hidden><span class="spin"></span><span id="aibt">AI đang chạy</span><button id="aibs">Dừng</button></div>
 <dialog id="rn"><p id="rnl" style="margin-top:0"></p><input id="rni"><div class="row" style="margin-top:12px"><button class="pri" id="rnok">Lưu</button><button onclick="$('#rn').close('')">Hủy</button></div></dialog>
 <dialog id="cd"><p id="cm"></p><div class="row"><button class="pri" onclick="$('#cd').close('ok')">Đồng ý</button><button onclick="$('#cd').close('no')">Hủy</button></div></dialog>
 <dialog id="gd">
@@ -292,7 +317,7 @@ const jx=t=>JSON.parse(t.slice(t.indexOf('{'),t.lastIndexOf('}')+1));
 const CARD_SYS='Bạn phân tích ý tưởng truyện. Chỉ trả JSON dạng {"cards":[{"type":"...","name":"...","body":"..."}]}. type chỉ là một trong: Tổng quan, Nhân vật, Thế giới, Địa điểm, Sự kiện, Quy tắc, Văn phong. Viết tiếng Việt, chỉ dùng thông tin có trong văn bản, không bịa thêm, mỗi thẻ ngắn gọn.';
 async function analyze(){const t=$('#gtxt').value.trim(),o=$('#gres');if(!t)return;if(!pm()&&!(await models())){o.textContent='Chưa kết nối AI. Xem mục Cài đặt.';return}
  o.textContent='AI đang đọc…';
- try{prop=jx(await llm(CARD_SYS,t,{json:1,temp:.3})).cards||[];
+ try{prop=jx(await llm(CARD_SYS,t,{json:1,temp:.3,label:'AI đang phân tích văn bản'})).cards||[];
  o.innerHTML=prop.map((c,i)=>`<label class="sub chk"><input type="checkbox" checked data-g="${i}"><span><b>${esc(c.type)}: ${esc(c.name)}</b><br><small>${esc(c.body)}</small></span></label>`).join('')||'AI không tìm thấy gì để tạo thẻ.'}catch(e){o.textContent='Lỗi: '+e.message}}
 $('#gan').onclick=analyze;
 $('#gadd').onclick=()=>{$$('#gres [data-g]').forEach(c=>{if(c.checked){const p=prop[+c.dataset.g];S.cards.push({type:String(p.type||'Ghi chú'),name:String(p.name||''),body:String(p.body||''),on:1})}});$('#gd').close();save();show('cards')};
@@ -302,11 +327,11 @@ let cm='tool',aw=false;
 const CHAT_SYS='\n\nVai trò hiện tại: bạn là đồng tác giả đang TRÒ CHUYỆN với tác giả. Nếu ý tưởng còn mơ hồ, hãy hỏi lại tối đa 3 câu ngắn (về không khí và giọng điệu, nhân vật chính, độc giả mục tiêu) rồi mới đề xuất hướng đi. Trả lời thân thiện, gọn, bằng tiếng Việt. Khi tác giả nhờ viết cảnh hoặc đoạn văn thì viết trực tiếp, không hỏi thêm.';
 const lastOut=()=>cm=='chat'?(((S.chat||[]).filter(m=>m.role=='assistant').slice(-1)[0])||{}).content||'':$('#out').textContent;
 function chatDraw(){const o=$('#out');o.innerHTML=(S.chat||[]).map(m=>`<div class="msg ${m.role}">${esc(m.content)}</div>`).join('')||'<span class="mute">Hãy kể ý tưởng của bạn, đính kèm file (.txt, .md, .docx) hoặc hỏi mình bất cứ điều gì về truyện. Mình sẽ hỏi lại vài câu để hiểu rõ không khí, nhân vật và độc giả trước khi gợi ý.</span>';o.scrollTop=o.scrollHeight}
-async function chatSend(){const x=$('#instr').value.trim();if(!x)return;
+async function chatSend(){const x=$('#instr').value.trim();if(!x)return;if(nb>0||aw){toast('AI đang chạy. Hãy đợi hoặc bấm Dừng.');return}
  if(!pm()&&!(await models())){$('#out').textContent='Chưa kết nối AI. Bấm Cài đặt để chọn nhà cung cấp và nhập API key.';return}
  S.chat=S.chat||[];S.chat.push({role:'user',content:x});$('#instr').value='';const m={role:'assistant',content:''};S.chat.push(m);chatDraw();
  ctl=new AbortController();
- try{const sy=sys()+CHAT_SYS+docsText(),hist=S.chat.slice(0,-1).slice(-24);await llm(sy,hist,{ctx:ctxFor(sy,hist),on:t=>{m.content+=t;chatDraw()},signal:ctl.signal})}catch(e){if(e.name!='AbortError')m.content+='\n[Lỗi: '+e.message+']'}
+ try{const sy=sys()+CHAT_SYS+docsText(),hist=S.chat.slice(0,-1).slice(-24);await llm(sy,hist,{label:'AI đang trả lời',ctx:ctxFor(sy,hist),on:t=>{m.content+=t;chatDraw()},signal:ctl.signal})}catch(e){if(e.name!='AbortError')m.content+='\n[Lỗi: '+e.message+']'}
  ctl=null;if(!m.content)S.chat.pop();save();chatDraw()}
 $('#aimode').onclick=e=>{const b=e.target.closest('[data-ai]');if(!b)return;cm=b.dataset.ai;$$('#aimode button').forEach(x=>x.classList.toggle('on',x==b));
  $('.grid').hidden=$('#awb').hidden=cm=='chat';$('#cclr').hidden=$('#attb').hidden=$('#docs').hidden=cm!='chat';$('#send').textContent=cm=='chat'?'Gửi':'Gửi yêu cầu';
@@ -327,6 +352,7 @@ function autoPrompt(i,j){const f=flat(),k=f.findIndex(x=>x.i==i&&x.j==j),prev=f.
  return 'Các chương trước (tóm tắt):\n'+(rec||'(chưa có)')+'\n\nĐoạn cuối chương trước:\n'+(last||'(chưa có)')+'\n\nHãy viết trọn vẹn chương "'+c.title+'"'+(c.sum?', nội dung chính: '+c.sum:'')+'. Khoảng 800-1200 từ, có miêu tả và đối thoại, nối liền mạch với phần trước, không nhắc lại những gì đã viết, không tóm tắt, không thêm tiêu đề. Chỉ trả về nội dung chương.'}
 async function autoWrite(){const out=$('#out'),btn=$('#awb');
  if(aw){aw=false;ctl&&ctl.abort();return}
+ if(nb>0){toast('AI đang chạy. Hãy đợi hoặc bấm Dừng.');return}
  if(!pm()&&!(await models())){out.textContent='Chưa kết nối AI. Bấm Cài đặt để chọn nhà cung cấp và nhập API key.';return}
  const todo=[];S.parts.forEach((p,i)=>p.chapters.forEach((c,j)=>{if(!c.text.trim())todo.push([i,j])}));
  if(!todo.length){out.textContent='Không còn chương trống nào để viết. Hãy thêm chương mới (kèm tóm tắt) rồi bấm lại.';return}
@@ -334,9 +360,9 @@ async function autoWrite(){const out=$('#out'),btn=$('#awb');
  aw=true;btn.textContent='Dừng tự viết';let n=0;
  for(const[i,j]of todo){if(!aw)break;n++;const c=S.parts[i].chapters[j];S.cur=[i,j];loadEd();
   out.textContent='Đang viết '+c.title+' ('+n+'/'+todo.length+')…';c.text='';ctl=new AbortController();
-  try{await llm(sys(),autoPrompt(i,j),{on:t=>{c.text+=t;if(S.cur[0]==i&&S.cur[1]==j){$('#text').value=c.text;count()}},signal:ctl.signal})}catch(e){if(e.name!='AbortError'){out.textContent='Dừng vì lỗi: '+e.message;aw=false}}
+  try{await llm(sys(),autoPrompt(i,j),{label:'AI đang viết '+c.title+' ('+n+'/'+todo.length+')',on:t=>{c.text+=t;if(S.cur[0]==i&&S.cur[1]==j){$('#text').value=c.text;count()}},signal:ctl.signal})}catch(e){if(e.name!='AbortError'){out.textContent='Dừng vì lỗi: '+e.message;aw=false}}
   c.text=c.text.trim();loadEd();save();if(!aw||!c.text)break;
-  try{c.rec=(await llm('Tóm tắt bằng tiếng Việt trong 2-3 câu: sự kiện chính, thay đổi của nhân vật và chi tiết cần nhớ cho các chương sau. Chỉ trả về bản tóm tắt.',c.text.slice(0,9000),{temp:.2})).trim();save()}catch(e){}}
+  try{c.rec=(await llm('Tóm tắt bằng tiếng Việt trong 2-3 câu: sự kiện chính, thay đổi của nhân vật và chi tiết cần nhớ cho các chương sau. Chỉ trả về bản tóm tắt.',c.text.slice(0,9000),{temp:.2,label:'AI đang ghi nhớ '+c.title})).trim();save()}catch(e){}}
  if(out.textContent.startsWith('Đang viết'))out.textContent=aw?'Đã viết xong '+n+' chương. Hãy đọc lại và chỉnh sửa theo ý bạn.':'Đã dừng. Các chương đã viết được giữ lại.';
  aw=false;btn.textContent='Tự viết các chương còn trống';ctl=null}
 $('#awb').onclick=autoWrite;
@@ -359,12 +385,13 @@ R.lib=()=>`<h2>Tủ truyện</h2><p class="hint">Bấm <b>Đổi bìa</b> dướ
 let smode='explore',sx='',plan=null;
 R.start=()=>`<h2>Từ ý tưởng đến tác phẩm</h2><div class="card"><h3>Ném cho mình một ý tưởng</h3><p class="hint">Xưởng dựng hồ sơ truyện và khung sườn từ ý tưởng hoặc bản thảo của bạn. Bạn xem lại và xác nhận trước khi thêm vào truyện.</p><div class="row" style="margin:8px 0"><button class="chip${smode=='explore'?' on':''}" data-t="sm" data-v="explore">Mình đang tìm ý tưởng</button><button class="chip${smode=='draft'?' on':''}" data-t="sm" data-v="draft">Mình đã có bản thảo</button></div><textarea id="sidea" style="min-height:170px" placeholder="${smode=='explore'?'Ví dụ: một cô bé mở tiệm bánh trong thế giới loài cáo, mỗi chiếc bánh giữ một ký ức…':'Dán bản thảo vào đây. Dòng bắt đầu bằng chữ Chương sẽ được tự tách thành chương.'}">${esc(sx)}</textarea><div class="row" style="margin-top:10px"><button class="pri" data-t="sgo">Bắt đầu viết</button><button data-t="sup">Tải file bản thảo</button></div><p class="hint" style="margin:8px 0 0">Hoặc kéo thả file .txt, .md, .docx vào trang này.</p><div id="sres" style="margin-top:10px">${plan?planHtml():''}</div></div>`;
 const planHtml=()=>{const p=plan;return `<div class="sub"><b>${esc(p.title||'(chưa có tên)')}</b> <small>${esc(p.genre||'')}</small><p>${esc(p.blurb||'')}</p>${(p.cards||[]).length?`<b>Thẻ hồ sơ (${p.cards.length})</b><p><small>${p.cards.map(c=>esc((c.type||'')+': '+(c.name||''))).join(' · ')}</small></p>`:''}${(p.parts||[]).length?'<b>Khung sườn</b>'+p.parts.map(x=>`<p><b>${esc(x.title)}</b><br><small>${(x.chapters||[]).map(c=>esc(c.title)).join(' · ')}</small></p>`).join(''):''}<div class="row"><button class="pri" data-t="apl">Áp dụng vào truyện</button><button data-t="sgo">Làm lại</button></div></div>`};
-async function startRun(){const t=($('#sidea')||{}).value||sx,o=$('#sres');sx=t;if(!t.trim()){o.textContent='Hãy nhập ý tưởng hoặc dán bản thảo.';return}
+async function startRun(){if(nb>0||aw){toast('AI đang chạy. Hãy đợi hoặc bấm Dừng.');return}
+ const t=($('#sidea')||{}).value||sx,o=$('#sres');sx=t;if(!t.trim()){o.textContent='Hãy nhập ý tưởng hoặc dán bản thảo.';return}
  if(!pm()&&!(await models())){o.textContent='Chưa kết nối AI. Bấm Cài đặt để chọn nhà cung cấp và nhập API key.';return}
  o.textContent='AI đang đọc…';
  const C='"title":"","genre":"","blurb":"2-3 câu","cards":[{"type":"Nhân vật|Thế giới|Địa điểm|Quy tắc|Văn phong|Tổng quan","name":"","body":""}]';
  const sy=smode=='explore'?'Bạn là biên tập viên. Từ ý tưởng của tác giả, đề xuất một truyện. Chỉ trả JSON: {'+C+',"parts":[{"title":"","sum":"","chapters":[{"title":"","sum":"1-2 câu"}]}]}. Tiếng Việt. 2 phần, mỗi phần 3-4 chương, 4-8 thẻ.':'Bạn là biên tập viên. Đọc bản thảo và rút ra hồ sơ truyện. Chỉ trả JSON: {'+C+'}. Tiếng Việt, chỉ dựa trên văn bản, không bịa.';
- try{plan=jx(await llm(sy,t.slice(0,12000),{json:1,temp:.5}));plan.mode=smode;plan.draft=t;o.innerHTML=planHtml()}catch(e){o.textContent='Lỗi: '+e.message+'. Nếu AI trả lời sai định dạng, hãy bấm thử lại.'}}
+ try{plan=jx(await llm(sy,t.slice(0,12000),{json:1,temp:.5,label:'AI đang đọc ý tưởng'}));plan.mode=smode;plan.draft=t;o.innerHTML=planHtml()}catch(e){o.textContent='Lỗi: '+e.message+'. Nếu AI trả lời sai định dạng, hãy bấm thử lại.'}}
 function applyPlan(){const p=plan;if(!p)return;
  if(p.title&&!S.title)S.title=p.title;if(p.genre&&!S.genre)S.genre=p.genre;if(p.blurb&&!S.blurb)S.blurb=p.blurb;
  (p.cards||[]).forEach(c=>S.cards.push({type:String(c.type||'Ghi chú'),name:String(c.name||''),body:String(c.body||''),on:1}));
@@ -586,7 +613,11 @@ let AI=Object.assign({p:'gemini',k:{},m:{},u:'https://openrouter.ai/api/v1'},(()
 const aiSave=()=>{try{localStorage.setItem('xt_ai',JSON.stringify(AI))}catch(e){}};
 const pm=()=>AI.p=='ollama'?S.cfg.model:AI.m[AI.p];
 async function sse(r,f){const rd=r.body.getReader(),dc=new TextDecoder();let b='';for(;;){const{done,value}=await rd.read();if(done)break;b+=dc.decode(value,{stream:true});const ls=b.split('\n');b=ls.pop();for(const l of ls){const t=l.trim();if(t.startsWith('data:')&&!/\[DONE\]/.test(t)){try{f(JSON.parse(t.slice(5)))}catch(e){}}}}}
-async function llm(sy,us,o={}){const p=AI.p,k=AI.k[p]||'',m=pm(),T=o.temp!=null?o.temp:S.cfg.temp;let out='';const add=t=>{if(t){out+=t;o.on&&o.on(t)}};
+let nb=0,curAb=null;
+function busy(on,l){nb=Math.max(0,nb+(on?1:-1));const a=$('#aib');if(on){$('#aibt').textContent=l||'AI đang chạy';a.hidden=false;$('#right').classList.add('busy')}else if(!nb){a.hidden=true;$('#right').classList.remove('busy')}}
+async function llm(sy,us,o={}){let ac=null;if(!o.signal){ac=new AbortController();curAb=ac;o=Object.assign({},o,{signal:ac.signal})}
+ busy(1,o.label);try{return await llm0(sy,us,o)}finally{busy(0);if(ac&&curAb===ac)curAb=null}}
+async function llm0(sy,us,o={}){const p=AI.p,k=AI.k[p]||'',m=pm(),T=o.temp!=null?o.temp:S.cfg.temp;let out='';const add=t=>{if(t){out+=t;o.on&&o.on(t)}};
  const H=p=='ollama'?{}:{'Content-Type':'application/json'};const M=Array.isArray(us)?us:[{role:'user',content:us}];let url,body;
  if(p=='ollama'){url=S.cfg.url.replace(/\/$/,'')+'/api/chat';body={model:m,stream:true,options:{temperature:T},messages:[{role:'system',content:sy},...M]};if(o.json)body.format='json';if(o.ctx)body.options.num_ctx=o.ctx}
  else if(p=='gemini'){url='https://generativelanguage.googleapis.com/v1beta/models/'+m+':streamGenerateContent?alt=sse';H['x-goog-api-key']=k;body={systemInstruction:{parts:[{text:sy}]},contents:M.map(m=>({role:m.role=='assistant'?'model':'user',parts:[{text:m.content}]})),generationConfig:{temperature:T}}}
@@ -628,20 +659,21 @@ function build(a,x){const f=ch().text,s=f.slice(sel[0],sel[1]);let b;
  else if(['rew','exp','sht'].includes(a))b=s||f.split(/\n+/).filter(Boolean).pop()||'';
  else b=s||f.slice(-6000);
  return (a?T[a]:'')+(x?'\n'+x:'')+'\n\n--- Nội dung ---\n'+b}
-async function run(a){const x=$('#instr').value.trim(),out=$('#out');if(!a&&!x){out.textContent='Hãy chọn một nút hoặc gõ yêu cầu.';return}
+async function run(a){const x=$('#instr').value.trim(),out=$('#out');if(nb>0||aw){toast('AI đang chạy. Hãy đợi hoặc bấm Dừng.');return}if(!a&&!x){out.textContent='Hãy chọn một nút hoặc gõ yêu cầu.';return}
  if(!pm()&&!(await models())){out.textContent='Chưa kết nối AI. Bấm Cài đặt để chọn nhà cung cấp và nhập API key.';return}
  out.textContent='';ctl=new AbortController();
- try{await llm(sys(),build(a,x),{on:t=>{out.textContent+=t;out.scrollTop=out.scrollHeight},signal:ctl.signal})}
+ try{await llm(sys(),build(a,x),{label:'AI đang viết',on:t=>{out.textContent+=t;out.scrollTop=out.scrollHeight},signal:ctl.signal})}
  catch(e){if(e.name!='AbortError')out.textContent+='\n[Lỗi: '+e.message+']'}
  ctl=null}
 $$('[data-a]').forEach(b=>b.onclick=()=>run(b.dataset.a));
 $('#send').onclick=()=>cm=='chat'?chatSend():run('');
-$('#stop').onclick=()=>ctl&&ctl.abort();
+const stopAI=()=>{aw=false;ctl&&ctl.abort();curAb&&curAb.abort()};
+$('#stop').onclick=stopAI;$('#aibs').onclick=stopAI;
 $('#ins').onclick=()=>{const o=lastOut(),t=$('#text');if(!o)return;t.value+=(t.value&&!t.value.endsWith('\n')?'\n\n':'')+o;ch().text=t.value;count();save();tree()};
 $('#rep').onclick=()=>{const o=lastOut(),t=$('#text');if(!o)return;if(sel[0]==sel[1]){toast('Hãy bôi đen đoạn cần thay trong bản thảo trước.');return}t.value=t.value.slice(0,sel[0])+o+t.value.slice(sel[1]);ch().text=t.value;sel=[sel[0],sel[0]+o.length];count();save();tree()};
 $('#cp').onclick=()=>navigator.clipboard.writeText(lastOut());
 document.documentElement.style.setProperty('--logo','url('+LOGO+')');$('link[rel=icon]').href=LOGO;
-theme();$('#ptitle').value=S.title;loadEd();models();bkInit();$('#ver').textContent='Phiên bản: 11-10-2026-i (đính kèm file trong Trò chuyện)';
+theme();$('#ptitle').value=S.title;loadEd();models();bkInit();$('#ver').textContent='Phiên bản: 11-10-2026-j (hiệu ứng rê chuột, báo AI đang chạy)';
 (()=>{const h=$('#rsz'),v=$('#v-write'),set=w=>{w=Math.max(300,Math.min(760,w));v.style.gridTemplateColumns='260px 1fr '+w+'px';try{localStorage.setItem('xt_aiw',w)}catch(e){}};
  try{const w=+localStorage.getItem('xt_aiw');if(w)set(w)}catch(e){}
  h.onpointerdown=e=>{e.preventDefault();h.setPointerCapture(e.pointerId);h.onpointermove=m=>set(v.getBoundingClientRect().right-m.clientX-4)};h.onpointerup=()=>{h.onpointermove=null}})();
